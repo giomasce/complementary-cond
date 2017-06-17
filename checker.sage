@@ -10,7 +10,7 @@ additional_defs = []
 all_vars = []
 xvars = ['t', 'tt', 'q']
 all_vars += xvars
-xvars_latex = ['\\tau', '\\tilde\\tau', '\\sqrt{-2p}']
+xvars_latex = ['\\tau_1^+', '\\tau_1^+', '\\sqrt{-2p}']
 zvars = ['z1', 'z2', 'z3']
 all_vars += zvars
 zvars_latex = ['\\zeta_1', '\\zeta_2', '\\zeta_3']
@@ -68,7 +68,23 @@ for a, b in additional_defs:
 SF = SymmetricFunctions(R)
 SFbar = SymmetricFunctions(Rbar)
 
+hvars_mat = [[eval('h%d%d' % (i, j)) for i in xrange(4)] for j in xrange(4)]
+hvars_diag = [eval('h%d%d' % (i, i)) for i in xrange(4)]
+hvars_real = [eval(var_) for var_ in hvars]
+thvars_mat = [[eval('th%d%d' % (i, j)) for i in xrange(4)] for j in xrange(4)]
+thvars_real = [eval(var_) for var_ in thvars]
+thvars_diag = [eval('th%d%d' % (i, i)) for i in xrange(4)]
+xvars_real = [eval('x%d' % (i)) for i in xrange(4)]
+
 def gen_simplifier(part):
+    """Generate a simplifier in the ring of symmetric functions over 3
+    variables.
+
+    A simplifier is an expression whose highest order term is the
+    specified partition, and that simplifies to zero when expanded
+    over 3 variables.
+
+    """
     if len(part) == 0:
         return None
     base = part[0]
@@ -88,6 +104,13 @@ def gen_simplifier(part):
     return simp
 
 def simplify_SF(poly):
+    """Simplifies a symmetric functions.
+
+    The input symmetric function (assumed to be over 3 variables) is
+    simplified as much as possible by subtracting all the possible
+    simplifiers.
+
+    """
     origpoly = poly
     ring = poly.parent()
     one_SF = ring(1)
@@ -102,14 +125,6 @@ def simplify_SF(poly):
         poly -= (one_SF * coeff) * ring(simp)
     assert poly.expand(3) == origpoly.expand(3)
     return poly
-
-hvars_mat = [[eval('h%d%d' % (i, j)) for i in xrange(4)] for j in xrange(4)]
-hvars_diag = [eval('h%d%d' % (i, i)) for i in xrange(4)]
-hvars_real = [eval(var_) for var_ in hvars]
-thvars_mat = [[eval('th%d%d' % (i, j)) for i in xrange(4)] for j in xrange(4)]
-thvars_real = [eval(var_) for var_ in thvars]
-thvars_diag = [eval('th%d%d' % (i, i)) for i in xrange(4)]
-xvars_real = [eval('x%d' % (i)) for i in xrange(4)]
 
 def map_poly(poly, monom_map=None, coeff_map=None):
     """Return a poly obtained by mapping all monomials of poly through
@@ -131,7 +146,17 @@ def map_poly(poly, monom_map=None, coeff_map=None):
             ret += coeff * monom
     return ret
 
+tilde_map = dict([(v1, v2) for v1, v2 in zip(hvars_real, thvars_real)] + [(v2, v1) for v1, v2 in zip(hvars_real, thvars_real)])
+tilde_map_t = {t: tt, tt: t}
+
 def double_eqs(eqs):
+    """Given a list of equations with t and h**, return return another
+    list in which each equation has been doubled (i.e., an copy of it
+    with tt instead of t and th** instead of h** is added to it).
+
+    This implements the passage from B0 to (B0(tau_1^+), B0(tau_1^-)).
+
+    """
     tmp = []
     for eq in eqs:
         # There are three levels of polynomials: the outer variables
@@ -146,6 +171,11 @@ def double_eqs(eqs):
     return tmp
 
 def eqs_to_matrix(eqs, double=True):
+    """Given a list of homogeneous polynomials of degree one in h** and
+    th**, returns a matrix in which each row contains the coefficients
+    of h** and th**.
+
+    """
     tmp = []
     for eq in eqs:
         assert eq.degree() <= 1
@@ -160,30 +190,13 @@ def eqs_to_matrix(eqs, double=True):
         tmp.append(tmp2)
     return matrix(tmp)
 
-def double_off_diagonals(eqs):
-    tmp = []
-    for eq in eqs:
-        assert eq.degree() <= 1
-        assert eq.monomial_coefficient(MR(1)) == 0
-        tmp2 = eq.parent()(0)
-        var_list = hvars_real + thvars_real
-        var_diag = hvars_diag + thvars_diag
-        for var_ in var_list:
-            tmp2 += eq.monomial_coefficient(var_) * var_ * (1 if var_ in var_diag else 2)
-        tmp.append(tmp2)
-    return tmp
-
-tilde_map = dict([(v1, v2) for v1, v2 in zip(hvars_real, thvars_real)] + [(v2, v1) for v1, v2 in zip(hvars_real, thvars_real)])
-tilde_map_t = {t: tt, tt: t}
-
-zsq = sum([xvars_real[i] ** 2 for i in xrange(1, 4)])
-Rx_eq = -zsq * h00 + t * z1 * h10 + t * z2 * h20 + t * z3 * h30 + (z1 ** 2 - t ** 2 - zsq) * h11 + (z2 ** 2 - t ** 2 - zsq) * h22 + (z3 ** 2 - t ** 2 - zsq) * h33 + z1 * z2 * h21 + z2 * z3 * h23 + z1 * z3 * h13
-Rx = eqs_to_matrix([Rx_eq]).T
-Rxt = eqs_to_matrix(double_eqs([Rx_eq])).T - Rx
-Rx_tr = eqs_to_matrix(double_off_diagonals([Rx_eq]))
-Rxt_tr = eqs_to_matrix(double_eqs(double_off_diagonals([Rx_eq]))) - Rx_tr
-
 def monomial_divides(monom, poly):
+    """Return true iff the monomial monom divides the polynomial poly.
+
+    Differently from the original SageMath implementation, it works on
+    every field.
+
+    """
     assert parent(monom) == parent(poly)
     # If monom is not a monomial, this line raises an exception
     [struct] = monom.dict().keys()
@@ -196,27 +209,21 @@ assert monomial_divides(t, t*tt+tt*(q*t + t))
 assert not monomial_divides(t, t*tt+tt*(q*t + tt))
 
 def positive_imag(z):
+    """Return one between z and -z, which has nonnegative imaginary part.
+
+    """
     return z if z.imag() >= 0 else -z
 
-def subs_vars(poly, this_q):
-    subs_dict = {}
-    ring = poly.parent()
-    subs_dict[ring(t)] = positive_imag(sqrt(-1 + this_q))
-    subs_dict[ring(tt)] = positive_imag(sqrt(-1 - this_q))
-    subs_dict[ring(q)] = this_q
-    return poly.subs(subs_dict)
+def mangle(poly):
+    """Returns a copy of poly in which every appearance of t^2 and tt^2 is
+    substituted with -1+q or -1-q as appropriate.
 
-def mangle(poly, z=None):
-    if z is None:
-        assert False
-        z = zsq
+    """
     polyring = poly.parent()
-    #new_q = polyring(I * sqrt(2)) * polyring(q)
     new_q = polyring(q)
-    #one = QQbar(1)
     one = QQ(1)
-    new_t2 = -polyring(z) + new_q
-    new_tt2 = -polyring(z) - new_q
+    new_t2 = -polyring(1) + new_q
+    new_tt2 = -polyring(1) - new_q
     t_here = polyring(t)
     tt_here = polyring(tt)
     ret = polyring(0)
@@ -232,19 +239,11 @@ def mangle(poly, z=None):
         ret += monom * fact * coeff
     return ret
 
-def super_mangle(poly):
-    poly = mangle(poly, 1)
-    good_vars = set([t, tt])
-    eligible_vars = list(set(poly.variables()).intersection(set([t, tt])))
-    if len(eligible_vars) == 0:
-        return poly
-    var = eligible_vars[0]
-    with_var, without_var = separate_var(poly, var)
-    with_var = mangle(with_var^2, 1)
-    without_var = mangle(without_var^2, 1)
-    return super_mangle(with_var - without_var)
-
 def separate_var(poly, var):
+    """Return poly as sum of two polynomial, the second of which does not
+    contain any appearance of the variable var.
+
+    """
     ring = poly.parent()
     with_var = ring(0)
     without_var = ring(0)
@@ -258,35 +257,33 @@ def separate_var(poly, var):
     assert poly == with_var + without_var
     return (with_var, without_var)
 
-def separate_tau(poly):
-    """Given a polynomial, returns it as sum of two factors, one
-    containing all monomials which depends on t or tt and the other
-    without t or tt.
+def super_mangle(poly):
+    """Iteratively apply mangle(), separate variable and square the
+    equation until t and tt do not appear anymore in the polynomial.
+
+    This procedure can (and most probably will) introduce new roots in
+    the polynomial, so each root must be checked a posteriori to
+    divide the original polynomial.
 
     """
-    ring = poly.parent()
-    with_tau = ring(0)
-    without_tau = ring(0)
-    ttt = ring(t * tt)
-    for monom in poly.monomials():
-        coeff = poly.monomial_coefficient(monom)
-        if monomial_divides(ttt, monom):
-            with_tau += monom * coeff
-        else:
-            without_tau += monom * coeff
-    assert poly == with_tau + without_tau
-    assert SR(t) not in SR(without_tau).variables()
-    assert SR(tt) not in SR(without_tau).variables()
-    # FIXME check every monomial, not just the polynomial as a whole
-    for monom in with_tau.monomials():
-        assert SR(t) in SR(monom).variables()
-        assert SR(tt) in SR(monom).variables()
-    return with_tau, without_tau
+    poly = mangle(poly)
+    good_vars = set([t, tt])
+    eligible_vars = list(set(poly.variables()).intersection(set([t, tt])))
+    if len(eligible_vars) == 0:
+        return poly
+    var = eligible_vars[0]
+    with_var, without_var = separate_var(poly, var)
+    with_var = mangle(with_var^2)
+    without_var = mangle(without_var^2)
+    return super_mangle(with_var - without_var)
 
 class NotFunctionOfZetaSquareException(Exception):
     pass
 
 def evaluate_sym_map(at):
+    """Helper function used by evaluate_sym().
+
+    """
     def subs_func(item, coeff):
         if at == 1:
             if len(item) > 0 and (item[0] != 2 or item[-1] != 2):
@@ -316,42 +313,29 @@ def evaluate_sym(sym, at):
         return ret
 
 def to_alg_closure(poly):
+    """Raise a polynomial to the algebraic closure of its base field.
+
+    """
     return poly.change_ring(poly.parent().base_ring().algebraic_closure())
 
-def to_rationals(poly):
-    return poly.change_ring(QQ)
+def subs_vars(poly, this_q):
+    """Helper function used by check_factor().
 
-def rational_ideal(*polys):
-    new_polys = []
-    roots = {}
-    dummy_id = 0
-    dummies = []
-    biggest_RG = RG
-    for poly in polys:
-        poly = RGbar(poly)
-        new_poly = RG(0)
-        for monom in poly.monomials():
-            coeff = poly.monomial_coefficient(monom)
-            try:
-                coeff = QQ(coeff)
-            except ValueError:
-                if coeff not in roots:
-                    dummy_name = 'dummy%d' % (dummy_id)
-                    dummy_id += 1
-                    new_RG = PolynomialRing(QQ, list(RG.gens()) + dummies + [dummy_name])
-                    biggest_RG = new_RG
-                    dummy = new_RG.gens()[-1]
-                    dummies.append(dummy)
-                    roots[coeff] = dummy
-                    dummy_poly = coeff.minpoly().subs(x=dummy)
-                    new_polys.append(dummy_poly)
-                monom *= roots[coeff]
-                coeff = QQ(1)
-            new_poly += coeff * monom
-        new_polys.append(new_poly)
-    return biggest_RG.ideal(*new_polys)
+    """
+    subs_dict = {}
+    ring = poly.parent()
+    subs_dict[ring(t)] = positive_imag(sqrt(-1 + this_q))
+    subs_dict[ring(tt)] = positive_imag(sqrt(-1 - this_q))
+    subs_dict[ring(q)] = this_q
+    return poly.subs(subs_dict)
 
 def check_factor(factor):
+    """Check that a polynomial does not have roots that contradict the
+    complementary condition.
+
+    Return False is bad roots are found, True otherwise.
+
+    """
     # We use powersum elementary polynomials because p[2] is the
     # |\zeta|^2 and p[a,b,c] = p[a]*p[b]*p[c]. No powers other than 2
     # should appear, since we expect the condition te be geometrical
@@ -368,11 +352,10 @@ def check_factor(factor):
     print "Evaluated at |\zeta| = 0: %s" % (atz0)
     print "Evaluated at |\zeta| = 1: %s" % (atz1)
 
-    # Use super_mangle and evaluate in g=this_g to reduce to a
-    # polynomial of a single variable; then find the roots and for
-    # each root check that it is an actual root of atz1 (super_mangle
-    # can introduce new roots) and that it does not violate
-    # parabolicity
+    # Use super_mangle() to reduce to a polynomial of a single
+    # variable; then find the roots and for each root check that it is
+    # an actual root of atz1 (super_mangle can introduce new roots)
+    # and that it does not violate parabolicity
     final = to_alg_closure(super_mangle(atz1))
     print "Final equation: %s" % (final)
     if final == 0:
@@ -384,17 +367,14 @@ def check_factor(factor):
     for this_q in sols:
         this_p = -1/2 * this_q^2
         y = subs_vars(atz1, this_q)
-        # The exact test takes too much, so we approximate it from
-        # above; this risks to reject a root while instead it causes
-        # no problem, but not the other way, so we are safe
-        #y.simplify()
-        #valid = y == 0
-        valid = abs(y).n(digits=5) < 1e-3
+        valid = y == 0
+        # If the exact comparison is too slow, the following inexact
+        # comparison can be used: this introduces the risk of
+        # rejecting a valid root, but not the (worse) risk of
+        # accepting an invalid root
+        #valid = abs(y).n(digits=5) < 1e-3
         parabolic = this_p.real() < 0
         print "  * q=%s, p=%s, y=%s, valid=%s, parabolic=%s" % (this_q, this_p, y, valid, parabolic)
-        #if this_p == 0:
-        #    print ">> Ignoring p=0 solution, it is an artifact of computation"
-        #    continue
         if valid and not parabolic:
             print ">> This solution a problem!"
             ret = False
@@ -411,35 +391,25 @@ def main():
     #B0_eqs += [3 * h11 - h11 - h22 - h33, 3 * h22 - h11 - h22 - h33, h12, h13, h23]
     # Second fundamental form
     B0_eqs += list(itertools.chain(*[[t * hvars_mat[i][j] - xvars_real[i] * hvars_mat[j][0] - xvars_real[j] * hvars_mat[i][0] for i in xrange(1, j+1)] for j in xrange(1, 4)]))
-    # Normal derivative of the metric
-    #B0_eqs += list(itertools.chain(*[[t * hvars_mat[i][j] for i in xrange(1, j+1)] for j in xrange(1, 4)]))
-    # Mean curvature
+    # Mean curvature and normal derivative
     #B0_eqs += [t * sum([hvars_mat[i][i] for i in xrange(1,4)]) - 2 * sum([hvars_mat[i][0] * xvars_real[i] for i in xrange(1, 4)])]
-    # Normal derivative of mean curvature
     #B0_eqs += [t^2 * sum([hvars_mat[i][i] for i in xrange(1,4)]) - t * 2 * sum([hvars_mat[i][0] * xvars_real[i] for i in xrange(1, 4)])]
     # Assigned normal length (fails DeTurck)
     #B0_eqs += [h00]
     # Assigned normal (fails DeTurck)
     #B0_eqs += [h01, h02, h03]
     # Ricci-nu-nu and normal derivative
-    #B0_eqs += [xsq * h00 + t^2 * Ht - 2 * t * K]
-    #B0_eqs += [t * xsq * h00 + t^3 * Ht - 2 * t^2 * K]
-    # Ricci-nu-something
-    #B0_eqs += [xsq * hvars_mat[0][j] + t * xvars_real[j] * Ht - t * sum([xvars_real[i] * hvars_mat[i][j] for i in xrange(4)]) - xvars_real[j] * Kt for j in xrange(4)]
+    #B0_eqs += [t^2 * sum([hvars_mat[i][i] for i in range(4)]) - t * sum([xvars_real[i] * hvars_mat[i][0] for i in range(4)])]
+    #B0_eqs += [t^3 * sum([hvars_mat[i][i] for i in range(4)]) - t^2 * sum([xvars_real[i] * hvars_mat[i][0] for i in range(4)])]
     # Ricci-DeTurck field
     B0_eqs += [2 * sum([xvars_real[j] * hvars_mat[j][i] for j in xrange(4)]) - xvars_real[i] * sum([hvars_mat[j][j] for j in xrange(4)]) for i in xrange(4)]
-    # Laplacian of Ricci-DeTurck field
-    #B0_eqs += [2 * xsq * sum([xvars_real[i] * hvars_mat[i][j] for i in xrange(4)]) - xvars_real[j] * xsq * Ht for j in xrange(4)]
     # Scalar curvature
     #B0_eqs += [sum(list(itertools.chain(*[[hvars_mat[i][j] * xvars_real[i] * xvars_real[j] - hvars_mat[i][i] * xvars_real[j] * xvars_real[j] for i in range(4)] for j in range(4)])))]
     # Normal derivative of scalar curvature
     #B0_eqs += [t * sum(list(itertools.chain(*[[hvars_mat[i][j] * xvars_real[i] * xvars_real[j] - hvars_mat[i][i] * xvars_real[j] * xvars_real[j] for i in range(4)] for j in range(4)])))]
-    # Laplacian of scalar curvature
-    #B0_eqs += [xsq * (L - xsq * Ht)]
     # Bour-DeTurck field
     B0_eqs += [sum(list(itertools.chain(*[[2 * xvars_real[k] * xvars_real[k] * xvars_real[j] * hvars_mat[i][j] - xvars_real[i] * xvars_real[j] * xvars_real[k] * hvars_mat[j][k] for k in xrange(4)] for j in xrange(4)]))) for i in xrange(4)]
-    # Derivative of Bour-DeTruck field
-    #B0_eqs += [t * 2 * xsq * sum([xvars_real[i] * hvars_mat[i][j] for i in xrange(4)]) - t * xvars_real[j] * L for j in xrange(4)]
+
     D0_eqs = double_eqs(B0_eqs)
     D0 = eqs_to_matrix(D0_eqs)
 
