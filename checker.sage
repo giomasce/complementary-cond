@@ -384,29 +384,39 @@ def check_factor(factor):
 def main():
     # The system
     B0_eqs = []
+
     # Tangential metric
     B0_eqs += [h11, h22, h33, h12, h13, h23]
-    # Conformal class of tangential metric (two equivalent forms)
-    #B0_eqs += [h22 - h11, h33 - h11, h12, h13, h23]
+    # Conformal class of tangential metric
     #B0_eqs += [3 * h11 - h11 - h22 - h33, 3 * h22 - h11 - h22 - h33, h12, h13, h23]
+
     # Second fundamental form
     B0_eqs += list(itertools.chain(*[[t * hvars_mat[i][j] - xvars_real[i] * hvars_mat[j][0] - xvars_real[j] * hvars_mat[i][0] for i in xrange(1, j+1)] for j in xrange(1, 4)]))
-    # Mean curvature and normal derivative
+    # Mean curvature
     #B0_eqs += [t * sum([hvars_mat[i][i] for i in xrange(1,4)]) - 2 * sum([hvars_mat[i][0] * xvars_real[i] for i in xrange(1, 4)])]
+    # Normal derivative of mean curvature
     #B0_eqs += [t^2 * sum([hvars_mat[i][i] for i in xrange(1,4)]) - t * 2 * sum([hvars_mat[i][0] * xvars_real[i] for i in xrange(1, 4)])]
-    # Assigned normal length (fails DeTurck)
-    #B0_eqs += [h00]
+
     # Assigned normal (fails DeTurck)
+    #B0_eqs += [h00, h01, h02, h03]
+    # Assigned normal direction (fails DeTurck)
     #B0_eqs += [h01, h02, h03]
-    # Ricci-nu-nu and normal derivative
+
+    # Ricci-nu-nu
     #B0_eqs += [-sum([xvars_real[k] * xvars_real[k] for k in xrange(4)]) * h00 - t^2 * sum([hvars_mat[k][k] for k in xrange(4)]) + 2 * t * sum([xvars_real[k] * hvars_mat[k][0] for k in xrange(4)])]
+    # Normal derivative of Ricci-nu-nu
     #B0_eqs += [-t * sum([xvars_real[k] * xvars_real[k] for k in xrange(4)]) * h00 - t^3 * sum([hvars_mat[k][k] for k in xrange(4)]) + 2 * t^2 * sum([xvars_real[k] * hvars_mat[k][0] for k in xrange(4)])]
-    # Ricci-DeTurck field
-    B0_eqs += [2 * sum([xvars_real[j] * hvars_mat[j][i] for j in xrange(4)]) - xvars_real[i] * sum([hvars_mat[j][j] for j in xrange(4)]) for i in xrange(4)]
+
     # Scalar curvature
     #B0_eqs += [sum(list(itertools.chain(*[[hvars_mat[i][j] * xvars_real[i] * xvars_real[j] - hvars_mat[i][i] * xvars_real[j] * xvars_real[j] for i in range(4)] for j in range(4)])))]
     # Normal derivative of scalar curvature
     #B0_eqs += [t * sum(list(itertools.chain(*[[hvars_mat[i][j] * xvars_real[i] * xvars_real[j] - hvars_mat[i][i] * xvars_real[j] * xvars_real[j] for i in range(4)] for j in range(4)])))]
+
+    # Ricci-DeTurck field
+    B0_eqs += [2 * sum([xvars_real[j] * hvars_mat[j][i] for j in xrange(4)]) - xvars_real[i] * sum([hvars_mat[j][j] for j in xrange(4)]) for i in xrange(4)]
+    # Tangential component of the Ricci-DeTurck field
+    #B0_eqs += [2 * sum([xvars_real[j] * hvars_mat[j][i] for j in xrange(4)]) - xvars_real[i] * sum([hvars_mat[j][j] for j in xrange(4)]) for i in xrange(1, 4)]
+
     # Bour-DeTurck field
     B0_eqs += [sum(list(itertools.chain(*[[2 * xvars_real[k] * xvars_real[k] * xvars_real[j] * hvars_mat[i][j] - xvars_real[i] * xvars_real[j] * xvars_real[k] * hvars_mat[j][k] for k in xrange(4)] for j in xrange(4)]))) for i in xrange(4)]
 
