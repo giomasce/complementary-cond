@@ -399,8 +399,8 @@ def main():
     # Assigned normal (fails DeTurck)
     #B0_eqs += [h01, h02, h03]
     # Ricci-nu-nu and normal derivative
-    #B0_eqs += [t^2 * sum([hvars_mat[i][i] for i in range(4)]) - t * sum([xvars_real[i] * hvars_mat[i][0] for i in range(4)])]
-    #B0_eqs += [t^3 * sum([hvars_mat[i][i] for i in range(4)]) - t^2 * sum([xvars_real[i] * hvars_mat[i][0] for i in range(4)])]
+    #B0_eqs += [-sum([xvars_real[k] * xvars_real[k] for k in xrange(4)]) * h00 - t^2 * sum([hvars_mat[k][k] for k in xrange(4)]) + 2 * t * sum([xvars_real[k] * hvars_mat[k][0] for k in xrange(4)])]
+    #B0_eqs += [-t * sum([xvars_real[k] * xvars_real[k] for k in xrange(4)]) * h00 - t^3 * sum([hvars_mat[k][k] for k in xrange(4)]) + 2 * t^2 * sum([xvars_real[k] * hvars_mat[k][0] for k in xrange(4)])]
     # Ricci-DeTurck field
     B0_eqs += [2 * sum([xvars_real[j] * hvars_mat[j][i] for j in xrange(4)]) - xvars_real[i] * sum([hvars_mat[j][j] for j in xrange(4)]) for i in xrange(4)]
     # Scalar curvature
